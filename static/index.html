@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision — Object Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface-2: #242837;
+      --border:    #2e3346;
+      --text:      #e4e6f0;
+      --text-dim:  #8b8fa7;
+      --accent:    #6c5ce7;
+      --accent-2:  #a29bfe;
+      --success:   #00cec9;
+      --warning:   #fdcb6e;
+      --danger:    #ff7675;
+      --radius:    12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ───────────────────────────────────── */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-2), var(--success));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    header p {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* ── Card ─────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Drop Zone ────────────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(108, 92, 231, 0.06);
+    }
+
+    .drop-zone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-zone-text {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .drop-zone-text strong {
+      color: var(--accent-2);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* ── Preview Strip ────────────────────────────── */
+    .preview-strip {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .preview-strip img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .preview-info {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .preview-info .name {
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .preview-info .size {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .preview-remove {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.25rem;
+    }
+
+    /* ── Controls ─────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: flex-end;
+    }
+
+    .control-group {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface-2);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 6px rgba(108, 92, 231, 0.5);
+    }
+
+    .slider-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      min-width: 2.5rem;
+      text-align: right;
+    }
+
+    /* ── Button ───────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #7c6cf0);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(108, 92, 231, 0.35);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(108, 92, 231, 0.45);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ── Spinner ──────────────────────────────────── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ──────────────────────────────────── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+
+    .result-image-wrap {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .result-image-wrap img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Summary Chips ────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.7rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .chip .count {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.1rem 0.45rem;
+      border-radius: 10px;
+    }
+
+    /* ── Detection Table ──────────────────────────── */
+    .det-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .det-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .det-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .det-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .conf-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .conf-bar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .conf-high   { background: var(--success); }
+    .conf-medium { background: var(--warning); }
+    .conf-low    { background: var(--danger);  }
+
+    /* ── Error ────────────────────────────────────── */
+    .error-msg {
+      background: rgba(255, 118, 117, 0.1);
+      border: 1px solid rgba(255, 118, 117, 0.3);
+      color: var(--danger);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    /* ── Utilities ────────────────────────────────── */
+    .hidden { display: none !important; }
+
+    .fade-in {
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+    }
+
+    .footer a {
+      color: var(--accent-2);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>⚡ Vision — Object Detection</h1>
+      <p>Upload an image to detect objects using YOLOv8</p>
+    </header>
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="card-title">Upload Image</div>
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" />
+        <div class="drop-zone-icon">📷</div>
+        <div class="drop-zone-text">
+          Drag &amp; drop an image here, or <strong>click to browse</strong><br />
+          <small>Supports JPG, PNG, WebP</small>
+        </div>
+      </div>
+
+      <!-- File Preview (hidden until file selected) -->
+      <div class="preview-strip hidden" id="previewStrip">
+        <img id="previewImg" src="" alt="preview" />
+        <div class="preview-info">
+          <div class="name" id="previewName"></div>
+          <div class="size" id="previewSize"></div>
+        </div>
+        <button class="preview-remove" id="removeBtn" title="Remove">✕</button>
+      </div>
+    </div>
+
+    <!-- Controls Card -->
+    <div class="card">
+      <div class="card-title">Settings</div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="confSlider">Confidence Threshold</label>
+          <div class="slider-wrap">
+            <input type="range" id="confSlider" min="0" max="100" value="50" />
+            <span class="slider-value" id="confValue">0.50</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="detectBtn" disabled>
+          <span id="btnText">Detect Objects</span>
+          <div class="spinner hidden" id="btnSpinner"></div>
+        </button>
+      </div>
+
+      <div class="error-msg hidden" id="errorMsg"></div>
+    </div>
+
+    <!-- Results Section (hidden until detection runs) -->
+    <div id="resultsSection" class="hidden fade-in">
+      <div class="card">
+        <div class="card-title">Results</div>
+        <div class="summary-bar" id="summaryBar"></div>
+
+        <div class="results-grid">
+          <!-- Annotated Image -->
+          <div class="result-image-wrap">
+            <img id="resultImg" src="" alt="Annotated result" />
+          </div>
+
+          <!-- Detections Table -->
+          <div style="overflow-x: auto;">
+            <table class="det-table" id="detTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Class</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="detBody"></tbody>
+            </table>
+            <p class="hidden" id="noDetections" style="color: var(--text-dim); font-size: 0.85rem; padding: 1rem;">
+              No objects detected. Try lowering the confidence threshold.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Built by <a href="https://github.com/Devan433" target="_blank">Deva Nandan H</a>
+      &middot; Powered by YOLOv8 &amp; FastAPI
+    </div>
+  </div>
+
+  <script>
+    // ── Elements ────────────────────────────────────
+    const dropZone      = document.getElementById('dropZone');
+    const fileInput     = document.getElementById('fileInput');
+    const previewStrip  = document.getElementById('previewStrip');
+    const previewImg    = document.getElementById('previewImg');
+    const previewName   = document.getElementById('previewName');
+    const previewSize   = document.getElementById('previewSize');
+    const removeBtn     = document.getElementById('removeBtn');
+    const confSlider    = document.getElementById('confSlider');
+    const confValue     = document.getElementById('confValue');
+    const detectBtn     = document.getElementById('detectBtn');
+    const btnText       = document.getElementById('btnText');
+    const btnSpinner    = document.getElementById('btnSpinner');
+    const errorMsg      = document.getElementById('errorMsg');
+    const resultsSection = document.getElementById('resultsSection');
+    const summaryBar    = document.getElementById('summaryBar');
+    const resultImg     = document.getElementById('resultImg');
+    const detBody       = document.getElementById('detBody');
+    const noDetections  = document.getElementById('noDetections');
+
+    const API_BASE = window.location.origin;
+    let selectedFile = null;
+
+    // ── Drag & Drop ────────────────────────────────
+    ['dragenter', 'dragover'].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag-over'); })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); })
+    );
+
+    dropZone.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    removeBtn.addEventListener('click', clearFile);
+
+    // ── File Handling ──────────────────────────────
+    function setFile(file) {
+      selectedFile = file;
+      previewImg.src = URL.createObjectURL(file);
+      previewName.textContent = file.name;
+      previewSize.textContent = formatBytes(file.size);
+      previewStrip.classList.remove('hidden');
+      dropZone.classList.add('hidden');
+      detectBtn.disabled = false;
+      errorMsg.classList.add('hidden');
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      previewStrip.classList.add('hidden');
+      dropZone.classList.remove('hidden');
+      detectBtn.disabled = true;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    // ── Confidence Slider ──────────────────────────
+    confSlider.addEventListener('input', () => {
+      confValue.textContent = (confSlider.value / 100).toFixed(2);
+    });
+
+    // ── Detection ──────────────────────────────────
+    detectBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      // UI: loading state
+      detectBtn.disabled = true;
+      btnText.textContent = 'Detecting…';
+      btnSpinner.classList.remove('hidden');
+      errorMsg.classList.add('hidden');
+      resultsSection.classList.add('hidden');
+
+      const confidence = (confSlider.value / 100).toFixed(2);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const res = await fetch(`${API_BASE}/detect?confidence=${confidence}`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail?.error || err.detail || 'Detection failed');
+        }
+
+        const data = await res.json();
+        renderResults(data);
+      } catch (err) {
+        errorMsg.textContent = `Error: ${err.message}`;
+        errorMsg.classList.remove('hidden');
+      } finally {
+        detectBtn.disabled = false;
+        btnText.textContent = 'Detect Objects';
+        btnSpinner.classList.add('hidden');
+      }
+    });
+
+    // ── Render Results ─────────────────────────────
+    function renderResults(data) {
+      // Summary chips
+      summaryBar.innerHTML = '';
+      const total = data.summary.total_objects_detected;
+      const totalChip = document.createElement('div');
+      totalChip.className = 'chip';
+      totalChip.innerHTML = `<span class="count">${total}</span> object${total !== 1 ? 's' : ''} detected`;
+      summaryBar.appendChild(totalChip);
+
+      for (const [cls, count] of Object.entries(data.summary.objects_per_class)) {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `<span class="count">${count}</span> ${cls}`;
+        summaryBar.appendChild(chip);
+      }
+
+      // Annotated image
+      resultImg.src = `${API_BASE}${data.annotated_image_url}`;
+
+      // Detections table
+      detBody.innerHTML = '';
+      if (data.detections.length === 0) {
+        noDetections.classList.remove('hidden');
+        document.getElementById('detTable').classList.add('hidden');
+      } else {
+        noDetections.classList.add('hidden');
+        document.getElementById('detTable').classList.remove('hidden');
+
+        data.detections.forEach((det, i) => {
+          const conf = det.confidence;
+          const colorClass = conf >= 0.75 ? 'conf-high' : conf >= 0.5 ? 'conf-medium' : 'conf-low';
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${det.class}</td>
+            <td>
+              <div class="conf-bar">
+                <div class="conf-bar-track">
+                  <div class="conf-bar-fill ${colorClass}" style="width:${(conf * 100).toFixed(0)}%"></div>
+                </div>
+                <span>${(conf * 100).toFixed(1)}%</span>
+              </div>
+            </td>
+          `;
+          detBody.appendChild(row);
+        });
+      }
+
+      // Show results
+      resultsSection.classList.remove('hidden');
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  </script>
+</body>
+</html>

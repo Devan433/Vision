@@ -9,7 +9,8 @@ Author: Deva Nandan H
 """
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from ultralytics import YOLO
 import cv2
@@ -54,8 +55,29 @@ RESULTS_DIR = "results"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
+# CORS — allow the UI (served from same origin or dev server) to call the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Serve annotated result images as static files
 app.mount("/static/results", StaticFiles(directory=RESULTS_DIR), name="results")
+
+# Serve the frontend UI
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static/ui", StaticFiles(directory=STATIC_DIR), name="ui")
+
+
+@app.get("/ui", response_class=HTMLResponse, tags=["UI"])
+def serve_ui():
+    """Serve the object detection web UI."""
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    with open(index_path, encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 
 # ============================================================
