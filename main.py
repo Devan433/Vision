@@ -290,6 +290,7 @@ if __name__ == "__main__":
     print("  Object Detection API")
     print("  Server: http://localhost:8000")
     print("  Docs:   http://localhost:8000/docs")
+    print("  UI:     http://localhost:8000/ui")
     print("=" * 50 + "\n")
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
